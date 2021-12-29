@@ -1,0 +1,62 @@
+//
+//  NewsVIewModel.swift
+//  TestNewsAPP
+//
+//  Created by Lwj on 2021/11/13.
+//
+
+import Foundation
+import Combine
+
+protocol NewsViewModel {
+    func getArticles()
+    var isLoading: Bool { get }
+}
+
+//enum ResultState: Equatable {
+//    case loading
+//    case failed(error: Error)
+//    case success(content: [Article])
+//}
+
+
+class NewsViewModelImpl:ObservableObject, NewsViewModel {
+
+    
+    private let service: NewsService
+    
+    private(set) var articles = [Article]()
+    private var cancellables = Set<AnyCancellable>()
+    
+    @Published private(set) var state: ResultState = .loading
+    
+    var isLoading: Bool {
+        state == .loading
+    }
+    
+    init(service: NewsService) {
+        self.service = service
+    }
+    
+    func getArticles() {
+        
+        self.state = .loading
+        
+        let cancellable = service
+            .request(from: .getNews)
+            .sink { res in
+                switch res {
+                    
+                case .finished:
+                    self.state = .success(content: self.articles)
+                case .failure(let error):
+                    self.state = .failed(error: error)
+                }
+            } receiveValue: { response in
+                self.articles = response.articles
+            }
+        
+        self.cancellables.insert(cancellable)
+    }
+    
+}
